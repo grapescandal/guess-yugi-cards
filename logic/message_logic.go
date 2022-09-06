@@ -146,6 +146,14 @@ func MessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				InitGame()
 			} else {
 				message += fmt.Sprintf("Try again, Answer is %v", status)
+				NextTurn()
+				turn = GetTurn()
+				player := players[turn]
+				message1 := fmt.Sprintf("%v's turn", player.Name)
+				_, err := s.ChannelMessageSend(m.ChannelID, message1)
+				if err != nil {
+					fmt.Println(err)
+				}
 			}
 			_, err := s.ChannelMessageSend(m.ChannelID, message)
 			if err != nil {
@@ -158,15 +166,6 @@ func MessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				if err != nil {
 					fmt.Println(err)
 				}
-			}
-
-			NextTurn()
-			turn = GetTurn()
-			player := players[turn]
-			message1 := fmt.Sprintf("%v's turn", player.Name)
-			_, err = s.ChannelMessageSend(m.ChannelID, message1)
-			if err != nil {
-				fmt.Println(err)
 			}
 
 		} else {
