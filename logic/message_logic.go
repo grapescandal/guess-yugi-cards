@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"guess-yugioh-cards-bot/helper"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -92,7 +93,91 @@ func MessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if err != nil {
 			fmt.Println(err)
 		}
+
+		turn := GetTurn()
+		players := GetPlayers(m.ChannelID)
+		playerName := players[turn].Name
+		SetMaxTurn(len(players) - 1)
+
+		message1 := fmt.Sprintf("%v's turn", playerName)
+		_, err = s.ChannelMessageSend(m.ChannelID, message1)
+		if err != nil {
+			fmt.Println(err)
+		}
 	} else if command == "answer" {
+
+		message := ""
+		if !isStart {
+			message += "Game is not start yet"
+			_, err := s.ChannelMessageSend(m.ChannelID, message)
+			if err != nil {
+				fmt.Println(err)
+			}
+			return
+		}
+
+		turn := GetTurn()
+		players := GetPlayers(m.ChannelID)
+
+		if m.Author.ID != players[turn].UserID {
+			message += "Not your turn"
+			_, err := s.ChannelMessageSend(m.ChannelID, message)
+			if err != nil {
+				fmt.Println(err)
+			}
+			return
+		}
+
+		answerFromUser := strings.ToLower(helper.FilterInput(m.Content, PREFIX+" "+"answer"))
+		player := GetPlayer(m.ChannelID, m.Author.ID)
+		result, success, status, answer := Answer(answerFromUser)
+		if success {
+			if result {
+				player.Score += currentScore
+				message += fmt.Sprintf("Player: %v win, Answer is %v \n", player.Name, answer.Name)
+				message += "----------Scoreboard----------\n"
+				sort.SliceStable(players, func(i, j int) bool {
+					return players[i].Score > players[j].Score
+				})
+				for _, player := range players {
+					message += fmt.Sprintf("%v : %v\n", player.Name, player.Score)
+				}
+
+				InitGame()
+			} else {
+				message += fmt.Sprintf("Try again, Answer is %v", status)
+			}
+			_, err := s.ChannelMessageSend(m.ChannelID, message)
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			if result {
+				cardImage := ReadCardImage()
+				_, err = s.ChannelFileSend(m.ChannelID, "card.jpg", cardImage)
+				if err != nil {
+					fmt.Println(err)
+				}
+			}
+
+			NextTurn()
+			turn = GetTurn()
+			player := players[turn]
+			message1 := fmt.Sprintf("%v's turn", player.Name)
+			_, err = s.ChannelMessageSend(m.ChannelID, message1)
+			if err != nil {
+				fmt.Println(err)
+			}
+
+		} else {
+			message += fmt.Sprintf("Try again, Answer is %v", status)
+			_, err := s.ChannelMessageSend(m.ChannelID, message)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+
+	} else if command == "open" {
 		message := ""
 
 		if !isStart {
@@ -104,24 +189,83 @@ func MessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 
-		answer := strings.ToLower(helper.FilterInput(m.Content, PREFIX+" "+"answer"))
-		player := GetPlayer(m.ChannelID, m.Author.ID)
+		turn := GetTurn()
 		players := GetPlayers(m.ChannelID)
-		result, answer := Answer(answer)
-		if result {
-			player.Score += 10
-			message += fmt.Sprintf("Player: %v win, Answer is %v \n", player.Name, answer)
-			message += "----------Scoreboard----------\n"
-			sort.SliceStable(players, func(i, j int) bool {
-				return players[i].Score > players[j].Score
-			})
-			for _, player := range players {
-				message += fmt.Sprintf("%v : %v", player.Name, player.Score)
+
+		if m.Author.ID != players[turn].UserID {
+			message += "Not your turn"
+			_, err := s.ChannelMessageSend(m.ChannelID, message)
+			if err != nil {
+				fmt.Println(err)
 			}
-		} else {
-			message += fmt.Sprintf("Try again, Answer is %v", answer)
+			return
 		}
-		_, err := s.ChannelMessageSend(m.ChannelID, message)
+
+		openPiece := strings.ToLower(helper.FilterInput(m.Content, PREFIX+" "+"open"))
+		index, err := strconv.Atoi(openPiece)
+		if err != nil {
+			message += "Please input only 1-9"
+			fmt.Printf("Failed to convert openPiece: %v", err)
+			_, err := s.ChannelMessageSend(m.ChannelID, message)
+			if err != nil {
+				fmt.Println(err)
+			}
+			return
+		}
+		if index <= 0 || index > 9 {
+			message += "Please input only 1-9"
+			_, err := s.ChannelMessageSend(m.ChannelID, message)
+			if err != nil {
+				fmt.Println(err)
+			}
+			return
+		}
+		hintImage, err := GetPieceCardImage(index)
+		if err != nil {
+			message += err.Error()
+			fmt.Printf("%s", err)
+			_, err := s.ChannelMessageSend(m.ChannelID, message)
+			if err != nil {
+				fmt.Println(err)
+			}
+			return
+		}
+		_, err = s.ChannelFileSend(m.ChannelID, "card.jpg", hintImage)
+		if err != nil {
+			fmt.Println(err)
+		}
+		defer hintImage.Close()
+
+		DecreaseScore()
+	} else if command == "pass" {
+		message := ""
+
+		if !isStart {
+			message += "Game is not start yet"
+			_, err := s.ChannelMessageSend(m.ChannelID, message)
+			if err != nil {
+				fmt.Println(err)
+			}
+			return
+		}
+
+		turn := GetTurn()
+		players := GetPlayers(m.ChannelID)
+
+		if m.Author.ID != players[turn].UserID {
+			message += "Not your turn"
+			_, err := s.ChannelMessageSend(m.ChannelID, message)
+			if err != nil {
+				fmt.Println(err)
+			}
+			return
+		}
+
+		NextTurn()
+		turn = GetTurn()
+		player := players[turn]
+		message1 := fmt.Sprintf("%v's turn", player.Name)
+		_, err := s.ChannelMessageSend(m.ChannelID, message1)
 		if err != nil {
 			fmt.Println(err)
 		}
