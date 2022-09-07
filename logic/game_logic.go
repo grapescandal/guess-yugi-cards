@@ -22,6 +22,7 @@ var turn int = 0
 var maxTurn int = 0
 var currentScore int = 10
 var maxScore int = 10
+var pieceScore int = 9
 
 func InitGame() {
 	isStart = false
@@ -39,6 +40,14 @@ func StartGame() {
 			CardInfo: card,
 		}
 		turn = 0
+		lengthCounter := 0
+		for _, a := range answer.Name {
+			if isAlphabets(a) {
+				lengthCounter++
+			}
+		}
+		maxScore = lengthCounter + pieceScore
+		currentScore = maxScore
 	}
 }
 
@@ -166,7 +175,7 @@ func DecreaseScore() {
 	currentScore -= 1
 }
 
-func GetHint() string {
+func GetHint() (string, int) {
 	hint := ""
 	for _, a := range answer.Name {
 		isAlphabets := isAlphabets(a)
@@ -177,7 +186,7 @@ func GetHint() string {
 		}
 	}
 
-	return hint
+	return hint, len(answer.Name)
 }
 
 func isAlphabets(c rune) bool {

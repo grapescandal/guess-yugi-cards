@@ -85,10 +85,10 @@ func MessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 
 		StartGame()
-		hint := GetHint()
+		hint, length := GetHint()
 		message += "Game Started!\n"
 
-		message += fmt.Sprintf("Answer is %s", hint)
+		message += fmt.Sprintf("Answer is %s, Length is %v", hint, length)
 		_, err := s.ChannelMessageSend(m.ChannelID, message)
 		if err != nil {
 			fmt.Println(err)
@@ -146,30 +146,30 @@ func MessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				InitGame()
 			} else {
 				message += fmt.Sprintf("Try again, Answer is %v", status)
+				_, err := s.ChannelMessageSend(m.ChannelID, message)
+				if err != nil {
+					fmt.Println(err)
+				}
 				NextTurn()
 				turn = GetTurn()
 				player := players[turn]
 				message1 := fmt.Sprintf("%v's turn", player.Name)
-				_, err := s.ChannelMessageSend(m.ChannelID, message1)
+				_, err = s.ChannelMessageSend(m.ChannelID, message1)
 				if err != nil {
 					fmt.Println(err)
 				}
 			}
-			_, err := s.ChannelMessageSend(m.ChannelID, message)
-			if err != nil {
-				fmt.Println(err)
-			}
 
 			if result {
 				cardImage := ReadCardImage()
-				_, err = s.ChannelFileSend(m.ChannelID, "card.jpg", cardImage)
+				_, err := s.ChannelFileSend(m.ChannelID, "card.jpg", cardImage)
 				if err != nil {
 					fmt.Println(err)
 				}
 			}
 
 		} else {
-			message += fmt.Sprintf("Try again, Answer is %v", status)
+			message += fmt.Sprintf("%v", status)
 			_, err := s.ChannelMessageSend(m.ChannelID, message)
 			if err != nil {
 				fmt.Println(err)
@@ -263,8 +263,8 @@ func MessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		NextTurn()
 		turn = GetTurn()
 		player := players[turn]
-		message1 := fmt.Sprintf("%v's turn", player.Name)
-		_, err := s.ChannelMessageSend(m.ChannelID, message1)
+		message = fmt.Sprintf("%v's turn", player.Name)
+		_, err := s.ChannelMessageSend(m.ChannelID, message)
 		if err != nil {
 			fmt.Println(err)
 		}
