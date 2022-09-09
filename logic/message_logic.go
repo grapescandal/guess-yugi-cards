@@ -142,6 +142,10 @@ func MessageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				for _, player := range players {
 					message += fmt.Sprintf("%v : %v\n", player.Name, player.Score)
 				}
+				_, err := s.ChannelMessageSend(m.ChannelID, message)
+				if err != nil {
+					fmt.Println(err)
+				}
 
 				InitGame()
 			} else {
